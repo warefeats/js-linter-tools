@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "lint-js-eslint-biome-2026-08",
+  "slug": "eslint-vs-biome-javascript-lint",
+  "category": "Code quality",
+  "title": "ESLint vs Biome",
+  "deck": "Four equivalent rule classes over nearly 100,000 lines of JavaScript.",
+  "unit": "ms",
+  "lowerIsBetter": true,
+  "verdict": {
+    "winnerId": "biome",
+    "headline": "Biome finished 1.4x faster",
+    "summary": "Biome took 75.2 ms at the median. ESLint took 105.6 ms on the same warmed corpus."
+  },
+  "corpus": {
+    "name": "ESLint 9.34.0 library source",
+    "source": "node_modules/eslint/lib/**/*.js",
+    "files": 391,
+    "lines": 99880,
+    "bytes": 2732670
+  },
+  "ruleMap": [
+    {
+      "intent": "Unused variables",
+      "eslint": "no-unused-vars",
+      "biome": "correctness/noUnusedVariables"
+    },
+    {
+      "intent": "Strict equality",
+      "eslint": "eqeqeq",
+      "biome": "suspicious/noDoubleEquals"
+    },
+    {
+      "intent": "Debugger statements",
+      "eslint": "no-debugger",
+      "biome": "suspicious/noDebugger"
+    },
+    {
+      "intent": "Prefer const",
+      "eslint": "prefer-const",
+      "biome": "style/useConst"
+    }
+  ],
+  "limitations": [
+    "This isolates lint throughput. It does not score rule coverage, editor integrations, migration cost, or ecosystem compatibility.",
+    "The paired rules express the same intent, but their implementations and exact diagnostics are not identical.",
+    "The corpus is ESLint's own JavaScript source and may not represent a typical application repository."
+  ],
+  "runs": [
+    "runs/2026-08-25-m2max.json"
+  ]
+}
