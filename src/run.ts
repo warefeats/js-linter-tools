@@ -92,6 +92,15 @@ function runCandidate(candidate: CandidateDefinition, options: RunnerOptions): C
   };
 }
 
+async function installedVersion(packageRoot: string, packageName: string): Promise<string> {
+  const manifest = JSON.parse(await readFile(resolve(packageRoot, "node_modules", packageName, "package.json"), "utf8")) as { version?: unknown };
+  if (typeof manifest.version !== "string") {
+    throw new Error(`Could not read the installed version of ${packageName}.`);
+  }
+
+  return manifest.version;
+}
+
 export async function runLintBenchmark(options: RunnerOptions): Promise<Record<string, unknown>> {
   const packageRoot = resolve(import.meta.dir, "..");
   const eslintSource = resolve(packageRoot, "node_modules/eslint/lib");
@@ -104,6 +113,10 @@ export async function runLintBenchmark(options: RunnerOptions): Promise<Record<s
     const size = await corpusSize(files);
     const eslintBinary = resolve(packageRoot, "node_modules/.bin/eslint");
     const biomeBinary = resolve(packageRoot, "node_modules/.bin/biome");
+    const [eslintVersion, biomeVersion] = await Promise.all([
+      installedVersion(packageRoot, "eslint"),
+      installedVersion(packageRoot, "@biomejs/biome"),
+    ]);
     const eslintRules = JSON.stringify({
       "no-unused-vars": "error",
       eqeqeq: "error",
@@ -115,14 +128,14 @@ export async function runLintBenchmark(options: RunnerOptions): Promise<Record<s
       {
         id: "eslint",
         name: "ESLint",
-        version: "9.34.0",
+        version: eslintVersion,
         command: [eslintBinary, "--no-config-lookup", "--no-ignore", "--no-color", "--report-unused-disable-directives-severity", "off", "--rule", eslintRules, ...files],
         displayCommand: `eslint --no-config-lookup --no-ignore --rule '${eslintRules}' corpus/**/*.js`,
       },
       {
         id: "biome",
         name: "Biome",
-        version: "2.2.2",
+        version: biomeVersion,
         command: [biomeBinary, "lint", "--colors=off", "--max-diagnostics=none", "--error-on-warnings", "--only=correctness/noUnusedVariables", "--only=suspicious/noDoubleEquals", "--only=suspicious/noDebugger", "--only=style/useConst", ...files],
         displayCommand: "biome lint --error-on-warnings --only=correctness/noUnusedVariables --only=suspicious/noDoubleEquals --only=suspicious/noDebugger --only=style/useConst corpus/**/*.js",
       },
