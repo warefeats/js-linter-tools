@@ -9,3 +9,6 @@ benchmark:
 
 smoke:
     bun run smoke
+
+publish result:
+    bun run src/publish.ts {{result}}
