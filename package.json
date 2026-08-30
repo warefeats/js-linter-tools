@@ -1,15 +1,19 @@
 {
-  "name": "@warefeats/benchmark-runner",
+  "name": "js-linter-tools",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "bun@1.4.0",
   "scripts": {
     "benchmark": "bun run src/index.ts",
+    "smoke": "bun run src/index.ts --quick",
     "check": "tsc --pretty false",
     "test": "bun test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
-    "eslint": "9.34.0"
+    "@types/bun": "1.2.21",
+    "eslint": "9.34.0",
+    "typescript": "5.9.2"
   }
 }
