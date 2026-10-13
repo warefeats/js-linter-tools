@@ -1,6 +1,6 @@
 # js-linter-tools
 
-The reproducible local benchmark runner behind the [warefeats.com "ESLint vs Biome" comparison](https://warefeats.com/benchmarks/eslint-vs-biome-javascript-lint/).
+The reproducible local benchmark runner behind the [warefeats.com "ESLint vs Biome" comparison](https://warefeats.com/posts/2026-08-26-js-linter-tools-eslint-vs-biome/).
 
 It copies ESLint's own `lib/` directory into a temp folder, then runs both ESLint and Biome against the same corpus with equivalent rule sets, collecting per-pass timing and summary statistics. Results live in this repo as `benchmark.json` (editorial metadata) plus one file per run under `runs/`.
 
