@@ -29,7 +29,7 @@ const ESLINT_ARGS = ["--no-config-lookup", "--no-ignore", "--no-color", "--repor
 const BIOME_ARGS = ["lint", "--colors=off", "--max-diagnostics=none", "--error-on-warnings", "--only=correctness/noUnusedVariables", "--only=suspicious/noDoubleEquals", "--only=suspicious/noDebugger", "--only=style/useConst"];
 
 interface CandidateDefinition {
-  id: "eslint" | "biome";
+  id: "eslint" | "eslint-10" | "biome";
   name: string;
   version: string;
   reportedVersion: string;
@@ -203,16 +203,21 @@ export function biomeChecked(output: string): number | null {
  * One unmeasured pass of each linter that must show it linted every file: the published run's ESLint ignored them
  * all as outside its base path and still exited 0.
  */
-function checkLinted(eslint: CandidateDefinition, biome: CandidateDefinition, cwd: string, files: number): { eslintProblems: number; biomeChecked: number } {
-  const lint = Bun.spawnSync({ cmd: [...eslint.command, "--format", "json"], cwd, stdout: "pipe", stderr: "pipe", timeout: PASS_TIMEOUT_MS });
-  const report = eslintReport(lint.stdout.toString() || "[]");
-  if (report.files !== files || report.ignored > 0) {
-    throw new Error(`ESLint reported ${report.files} of ${files} files and ignored ${report.ignored}; it has to lint every one.`);
+function checkLinted(defs: CandidateDefinition[], cwd: string, files: number): { eslintProblems: Record<string, number>; biomeChecked: number } {
+  const eslintProblems: Record<string, number> = {};
+  for (const eslint of defs.filter((def) => def.id !== "biome")) {
+    const lint = Bun.spawnSync({ cmd: [...eslint.command, "--format", "json"], cwd, stdout: "pipe", stderr: "pipe", timeout: PASS_TIMEOUT_MS });
+    const report = eslintReport(lint.stdout.toString() || "[]");
+    if (report.files !== files || report.ignored > 0) {
+      throw new Error(`${eslint.name} reported ${report.files} of ${files} files and ignored ${report.ignored}; it has to lint every one.`);
+    }
+    eslintProblems[eslint.id] = report.problems;
   }
+  const biome = defs.find((def) => def.id === "biome")!;
   const check = Bun.spawnSync({ cmd: biome.command, cwd, stdout: "pipe", stderr: "pipe", timeout: PASS_TIMEOUT_MS });
   const checked = biomeChecked(check.stdout.toString() + check.stderr.toString());
   if (checked !== files) throw new Error(`Biome checked ${checked ?? "no"} files of ${files}; it has to check every one.`);
-  return { eslintProblems: report.problems, biomeChecked: checked };
+  return { eslintProblems, biomeChecked: checked };
 }
 
 async function installedVersion(packageRoot: string, packageName: string): Promise<string> {
@@ -271,24 +276,30 @@ export async function runLintBenchmark(options: RunnerOptions): Promise<Record<s
     const paths = files.map((file) => relative(corpusDirectory, file));
 
     const nodeVersion = detectNodeVersion();
-    const eslintScript = await binEntry(packageRoot, "eslint", "eslint");
     const biomeScript = await binEntry(packageRoot, "@biomejs/biome", "biome");
     const entryName = (path: string) => path.slice(join(packageRoot, "node_modules").length + 1).replaceAll("\\", "/");
-    const [eslintVersion, biomeVersion] = await Promise.all([
-      installedVersion(packageRoot, "eslint"),
-      installedVersion(packageRoot, "@biomejs/biome"),
-    ]);
+    const biomeVersion = await installedVersion(packageRoot, "@biomejs/biome");
+    // One candidate per ESLint release line: the package.json dependency (an npm alias past the first) and its name.
+    const eslintLines: { id: "eslint" | "eslint-10"; name: string }[] = [
+      { id: "eslint", name: "ESLint 9" },
+      { id: "eslint-10", name: "ESLint 10" },
+    ];
+    const eslints: CandidateDefinition[] = [];
+    for (const line of eslintLines) {
+      const script = await binEntry(packageRoot, line.id, "eslint");
+      eslints.push({
+        id: line.id,
+        name: line.name,
+        version: await installedVersion(packageRoot, line.id),
+        reportedVersion: cliVersion(["node", script], corpusDirectory),
+        entry: `node ${entryName(script)}`,
+        command: ["node", script, ...ESLINT_ARGS, ...paths],
+        displayCommand: `eslint --no-config-lookup --no-ignore --rule '${ESLINT_RULES}' **/*.js (run inside the corpus folder)`,
+      });
+    }
 
     const definitions: CandidateDefinition[] = [
-      {
-        id: "eslint",
-        name: "ESLint",
-        version: eslintVersion,
-        reportedVersion: cliVersion(["node", eslintScript], corpusDirectory),
-        entry: `node ${entryName(eslintScript)}`,
-        command: ["node", eslintScript, ...ESLINT_ARGS, ...paths],
-        displayCommand: `eslint --no-config-lookup --no-ignore --rule '${ESLINT_RULES}' **/*.js (run inside the corpus folder)`,
-      },
+      ...eslints,
       {
         id: "biome",
         name: "Biome",
@@ -304,7 +315,7 @@ export async function runLintBenchmark(options: RunnerOptions): Promise<Record<s
       if (platform() === "win32" && length > WINDOWS_COMMAND_LIMIT) throw new Error(`${def.name}'s command line runs ${length} characters, past Windows' limit.`);
     }
 
-    const linted = checkLinted(definitions[0]!, definitions[1]!, corpusDirectory, files.length);
+    const linted = checkLinted(definitions, corpusDirectory, files.length);
     const candidates = runCandidates(definitions, corpusDirectory, options);
     const eslint = candidates.find((candidate) => candidate.id === "eslint");
     const biome = candidates.find((candidate) => candidate.id === "biome");
