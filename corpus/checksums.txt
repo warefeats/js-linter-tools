@@ -1,0 +1,4 @@
+# checksums.txt: SHA-256 of the corpus archive, in `sha256sum` format ("<hex>  <path>", paths relative to corpus/).
+# The corpus is ESLint 9.34.0's lib/ from its npm tarball, whatever ESLint a run measures. The harness checks the
+# archive against this before every run, and the fleet's cache script before copying it to a rig.
+81f36e48bdafe1b9816d9d08f84af098919aa5bb83bacc7a1e04613d86849146  cache/eslint-9.34.0.tgz

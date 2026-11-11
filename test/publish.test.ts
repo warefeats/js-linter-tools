@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { convertToRun, rigSlug, updateBenchmarkRuns } from "../src/publish";
+import { checkFleetRun, convertToRun, fleetRun, lineupOf, rigSlug, updateBenchmarkRuns } from "../src/publish";
 import type { RunnerResult } from "../src/publish";
 
 const MOCK_RESULT: RunnerResult = {
@@ -145,5 +145,63 @@ describe("benchmark.json update", () => {
     updateBenchmarkRuns(benchmark, "runs/b.json");
     updateBenchmarkRuns(benchmark, "runs/b.json");
     expect(benchmark.runs).toEqual(["runs/a.json", "runs/b.json"]);
+  });
+});
+
+describe("fleet runs", () => {
+  const RIG = { machine: "BOSGAME P6 Neo", chip: "AMD Ryzen 7 6800H with Radeon Graphics", cores: "8 cores / 16 threads", memory: "24 GB at 4800 MT/s", os: "Microsoft Windows 11 Pro 26H2 (build 26300)", arch: "x64" };
+  const FLEET_RESULT: RunnerResult = {
+    ...MOCK_RESULT,
+    generatedAt: "2026-11-12T03:10:00.000Z",
+    smoke: false,
+    linted: { eslintProblems: 23, biomeChecked: 391 },
+    environment: { ...MOCK_RESULT.environment, node: "24.22.2" },
+    rig: RIG,
+    candidates: MOCK_RESULT.candidates.map((c) => ({ ...c, reportedVersion: c.version })),
+  };
+  // bun.lock's lines for the two candidates, trimmed, with the CRLF a Windows checkout can give it.
+  const LOCK = [
+    '    "@biomejs/biome": ["@biomejs/biome@2.2.2", "", { "optionalDependencies": { "@biomejs/cli-win32-x64": "2.2.2" }, "bin": { "biome": "bin/biome" } }, "sha512-biomehash=="],',
+    '    "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.2.2", "", { "os": "win32", "cpu": "x64" }, "sha512-binaryhash=="],',
+    '    "eslint": ["eslint@9.34.0", "", { "dependencies": { "@eslint/js": "9.34.0" }, "peerDependencies": { "jiti": "*" } }, "sha512-eslinthash=="],',
+  ].join("\r\n");
+  const COMMIT = "0123456789abcdef0123456789abcdef01234567";
+
+  test("is dated by the run, labelled with the rig and names the Node it ran on", () => {
+    const run = fleetRun(FLEET_RESULT, { commit: COMMIT, rig: "radeon-680m-win11", machine: "BOSGAME EffiZen ARB19B mini PC", cpuShort: "Ryzen 7 6800H", osShort: "Windows 11", lock: LOCK });
+    expect(run.id).toBe("2026-11-12-radeon-680m-win11");
+    expect(run.label).toBe("Ryzen 7 6800H / Windows 11, 2026-11-12");
+    expect(run.publishedAt).toBe("2026-11-12");
+    expect(run.environment.cores).toBe("8 cores / 16 threads");
+    expect(run.environment.runtime).toBe("Node 24.22.2 (ESLint, and Biome's launcher); Biome native binary; Bun 1.4.0 harness");
+    expect(run.provenance).toEqual({ kind: "fleet", commit: COMMIT, rig: "radeon-680m-win11" });
+  });
+
+  test("records the declared packages, scoped Biome included, not its platform binary", () => {
+    expect(lineupOf(FLEET_RESULT, LOCK)).toEqual([
+      { candidateId: "eslint", package: "eslint", version: "9.34.0", integrity: "sha512-eslinthash==" },
+      { candidateId: "biome", package: "@biomejs/biome", version: "2.2.2", integrity: "sha512-biomehash==" },
+    ]);
+  });
+
+  test("refuses smoke runs, bad commits, version mismatches and results that don't show every file linted", () => {
+    expect(() => checkFleetRun(FLEET_RESULT, { allowSmoke: false, commit: COMMIT })).not.toThrow();
+    expect(() => checkFleetRun({ ...FLEET_RESULT, smoke: true }, { allowSmoke: false, commit: COMMIT })).toThrow("can't be a smoke run");
+    expect(() => checkFleetRun(FLEET_RESULT, { allowSmoke: false, commit: "main" })).toThrow("full SHA");
+    const { linted: _, ...unchecked } = FLEET_RESULT;
+    expect(() => checkFleetRun(unchecked, { allowSmoke: false, commit: COMMIT })).toThrow("every file");
+    const drifted = { ...FLEET_RESULT, candidates: FLEET_RESULT.candidates.map((c) => (c.id === "biome" ? { ...c, reportedVersion: "2.6.5" } : c)) };
+    expect(() => checkFleetRun(drifted, { allowSmoke: false, commit: COMMIT })).toThrow("biome reported 2.6.5 at run time but 2.2.2 was installed");
+  });
+
+  test("keeps the published run's runtime line for results without Node", () => {
+    expect(convertToRun(MOCK_RESULT, {}).environment.runtime).toBe("Bun 1.4.0");
+  });
+});
+
+describe("authored runs on a fleet rig", () => {
+  test("take the rig's slug for the id when given one, so fleet runs on the rig compare with them", () => {
+    expect(convertToRun(MOCK_RESULT, { rig: "radeon-680m-win11" }).id).toBe("2026-08-25-radeon-680m-win11");
+    expect(convertToRun(MOCK_RESULT, {}).id).toBe("2026-08-25-m2max");
   });
 });
