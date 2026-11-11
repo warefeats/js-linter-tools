@@ -3,6 +3,9 @@
   "id": "lint-js-eslint-biome-2026-08",
   "slug": "js-linter-tools",
   "post": "2026-08-26-js-linter-tools-eslint-vs-biome",
+  "posts": [
+    "posts/2026-11-11-js-linter-tools-eslint-vs-biome.json"
+  ],
   "category": "Code quality",
   "title": "ESLint vs Biome",
   "deck": "Four equivalent rule classes over nearly 100,000 lines of JavaScript.",
@@ -11,8 +14,8 @@
   "sectionSamples": "repeats",
   "verdict": {
     "winnerId": "biome",
-    "headline": "Biome finished 1.4x faster",
-    "summary": "Biome took 75.2 ms at the median. ESLint took 105.6 ms on the same warmed corpus."
+    "headline": "Correction: this run timed ESLint skipping every file",
+    "summary": "Corrected November 11, 2026. The harness started ESLint outside the folder it was linting, so ESLint reported all 391 files as outside its base path and linted none of them: its 105.6 ms is start-up time. Biome's 75.2 ms was a full lint. Measured again with the fix on a Ryzen 7 6800H, Biome took 203 ms and ESLint 1,436 ms, so Biome is about 7x faster. The new post has that run."
   },
   "corpus": {
     "name": "ESLint 9.34.0 library source",
@@ -49,6 +52,7 @@
     "The corpus is ESLint's own JavaScript source and may not represent a typical application repository."
   ],
   "runs": [
-    "runs/2026-08-25-m2max.json"
+    "runs/2026-08-25-m2max.json",
+    "runs/2026-11-11-radeon-680m-win11.json"
   ]
 }
