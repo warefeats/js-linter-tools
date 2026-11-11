@@ -73,6 +73,8 @@ Optional flags: `--machine="MacBook Pro"` (display name for the machine; default
 
 ## Fleet runs
 
+Each candidate is a release line: `eslint` is ESLint 9, measured while ESLint patches it and kept on 9.x; `eslint-10` is ESLint 10, an npm alias; `@biomejs/biome` is Biome 2. Both ESLint lines run the same four rules (the rule map's ESLint column). Renovate moves a line to its newest stable release once that release is a week old and merges the bump when CI passes (`renovate.json`); a new major waits on the dependency dashboard and becomes a new alias by hand. A bump measures nothing; the fleet measures `main` when it pins a release its newest fleet run didn't measure.
+
 `bun run src/publish.ts <results.json> --fleet --commit=<sha> --rig=<slug>` imports a run the warefeats fleet measured on its Windows rig, on the Node `.node-version` pins and with the tarball staged from the rig's cache. It refuses a smoke run, a CLI that reported another version than the installed one, and results without the every-file check; records the commit, the rig and each candidate's integrity hash from `bun.lock`; and writes `runs/<date>-<rig>.json` without touching `benchmark.json`. The fleet's PR then lists the run in `fleetRuns`, and fleet runs appear on the site's matchup, never on the post. `sectionSamples: "repeats"` says each sample is one fresh-process lint of the whole corpus, so the fleet's verdict check reads a new leader inside twice the standard error of the difference as a tie.
 
 ## Type checking and tests

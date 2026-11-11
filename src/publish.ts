@@ -34,7 +34,7 @@ export interface RunnerResult {
   smoke?: boolean;
   corpus: Record<string, unknown>;
   /** The unmeasured pass that showed both linters linted every file; results from before the fleet don't have it. */
-  linted?: { eslintProblems: number; biomeChecked: number };
+  linted?: { eslintProblems: Record<string, number>; biomeChecked: number };
   environment: RunnerEnvironment;
   rig?: RigInfo;
   protocol: { warmups: number; runs: number; processModel: string };
@@ -103,11 +103,12 @@ export interface RunFile {
 
 const CANDIDATE_BRANDING: Record<string, { logo: string; homepage: string; color: string }> = {
   eslint: { logo: "/logos/eslint.svg", homepage: "https://eslint.org", color: "#4B32C3" },
+  "eslint-10": { logo: "/logos/eslint.svg", homepage: "https://eslint.org", color: "#8080F2" },
   biome: { logo: "/logos/biome.svg", homepage: "https://biomejs.dev", color: "#60A5FA" },
 };
 
 /** The package.json dependency each candidate is, which the fleet's plan matches against the lineup. */
-const CANDIDATE_PACKAGES: Record<string, string> = { eslint: "eslint", biome: "@biomejs/biome" };
+const CANDIDATE_PACKAGES: Record<string, string> = { eslint: "eslint", "eslint-10": "eslint-10", biome: "@biomejs/biome" };
 
 const PROCESS_MODELS: Record<string, string> = {
   "fresh process per pass": "A new CLI process for every measured pass",

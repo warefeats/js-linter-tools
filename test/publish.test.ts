@@ -154,7 +154,7 @@ describe("fleet runs", () => {
     ...MOCK_RESULT,
     generatedAt: "2026-11-12T03:10:00.000Z",
     smoke: false,
-    linted: { eslintProblems: 23, biomeChecked: 391 },
+    linted: { eslintProblems: { eslint: 23 }, biomeChecked: 391 },
     environment: { ...MOCK_RESULT.environment, node: "24.22.2" },
     rig: RIG,
     candidates: MOCK_RESULT.candidates.map((c) => ({ ...c, reportedVersion: c.version })),
@@ -203,5 +203,26 @@ describe("authored runs on a fleet rig", () => {
   test("take the rig's slug for the id when given one, so fleet runs on the rig compare with them", () => {
     expect(convertToRun(MOCK_RESULT, { rig: "radeon-680m-win11" }).id).toBe("2026-08-25-radeon-680m-win11");
     expect(convertToRun(MOCK_RESULT, {}).id).toBe("2026-08-25-m2max");
+  });
+});
+
+describe("release lines", () => {
+  test("record an aliased line under the real package, which the fleet's plan matches", () => {
+    const result: RunnerResult = {
+      ...MOCK_RESULT,
+      candidates: [...MOCK_RESULT.candidates, { ...MOCK_RESULT.candidates[0]!, id: "eslint-10", name: "ESLint 10", version: "10.14.0" }],
+    };
+    const lock = [
+      '    "@biomejs/biome": ["@biomejs/biome@2.2.2", "", { "bin": { "biome": "bin/biome" } }, "sha512-biomehash=="],',
+      '    "eslint": ["eslint@9.34.0", "", { "bin": { "eslint": "bin/eslint.js" } }, "sha512-nine=="],',
+      '    "eslint-10": ["eslint@10.14.0", "", { "dependencies": { "@eslint/core": "^1.0.0" } }, "sha512-ten=="],',
+    ].join("\n");
+    expect(lineupOf(result, lock).find((entry) => entry.candidateId === "eslint-10")).toEqual({ candidateId: "eslint-10", package: "eslint", version: "10.14.0", integrity: "sha512-ten==" });
+  });
+
+  test("give the ESLint 10 line its own color", () => {
+    const result: RunnerResult = { ...MOCK_RESULT, candidates: [...MOCK_RESULT.candidates, { ...MOCK_RESULT.candidates[0]!, id: "eslint-10", name: "ESLint 10", version: "10.14.0" }] };
+    const colors = convertToRun(result, {}).candidates.map((candidate) => candidate.color);
+    expect(new Set(colors).size).toBe(colors.length);
   });
 });
