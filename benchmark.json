@@ -56,6 +56,7 @@
     "runs/2026-11-11-radeon-680m-win11.json"
   ],
   "fleetRuns": [
+    "runs/2026-11-11-radeon-680m-win11-3.json",
     "runs/2026-11-11-radeon-680m-win11-2.json"
   ]
 }
