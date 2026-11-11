@@ -8,6 +8,7 @@
   "deck": "Four equivalent rule classes over nearly 100,000 lines of JavaScript.",
   "unit": "ms",
   "lowerIsBetter": true,
+  "sectionSamples": "repeats",
   "verdict": {
     "winnerId": "biome",
     "headline": "Biome finished 1.4x faster",
